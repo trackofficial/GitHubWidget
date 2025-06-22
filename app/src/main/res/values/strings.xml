@@ -43,4 +43,10 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+
+    <string name="error_required">Обязательное поле</string>
+    <string name="hint_enter_username">Введите GitHub имя пользователя</string>
+    <string name="slide_for_next">Свайпните вправо, чтобы продолжить</string>
+    <string name="confirm_username">Подтвердите GitHub имя</string>
+    <string name="action_add">Добавить</string>
 </resources>

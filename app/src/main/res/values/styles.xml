@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Стиль для одной «клетки» -->
+    <style name="Cell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">12dp</item>
+        <item name="android:layout_rowWeight">1</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:background">#333333</item>
+    </style>
+
+    <!-- Точки-индикаторы -->
+    <style name="DotInactive">
+        <item name="android:layout_width">8dp</item>
+        <item name="android:layout_height">8dp</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:background">@drawable/dot_inactive</item>
+    </style>
+    <style name="DotActive">
+        <item name="android:layout_width">8dp</item>
+        <item name="android:layout_height">8dp</item>
+        <item name="android:layout_margin">4dp</item>
+        <item name="android:background">@drawable/dot_active</item>
+    </style>
+</resources>

@@ -1,59 +1,83 @@
 package com.example.githubwidget
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
+import android.content.Context
+import android.graphics.BitmapFactory
 import android.os.Bundle
-import com.google.android.material.snackbar.Snackbar
+import android.view.View
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.findNavController
-import androidx.navigation.ui.AppBarConfiguration
-import androidx.navigation.ui.navigateUp
-import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import com.example.githubwidget.databinding.ActivityMainBinding
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var appBarConfiguration: AppBarConfiguration
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var etGithubId: EditText
+    private lateinit var btnConfirm: Button
+    private lateinit var profileBlock: LinearLayout
+    private lateinit var ivProfile: ImageView
+    private lateinit var tvName: TextView
+    private lateinit var tvFollowers: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        etGithubId   = findViewById(R.id.etGithubId)
+        btnConfirm   = findViewById(R.id.btnConfirm)
+        profileBlock = findViewById(R.id.profileBlock)
+        ivProfile    = findViewById(R.id.ivProfile)
+        tvName       = findViewById(R.id.tvName)
+        tvFollowers  = findViewById(R.id.tvFollowers)
 
-        setSupportActionBar(binding.toolbar)
+        btnConfirm.setOnClickListener {
+            val user = etGithubId.text.toString().trim()
+            if (user.isEmpty()) {
+                etGithubId.error = "Обязательное поле"
+                return@setOnClickListener
+            }
 
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        appBarConfiguration = AppBarConfiguration(navController.graph)
-        setupActionBarWithNavController(navController, appBarConfiguration)
+            profileBlock.visibility = View.GONE
+            Toast.makeText(this, "Загружаю данные...", Toast.LENGTH_SHORT).show()
 
-        binding.fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null)
-                .setAnchorView(R.id.fab).show()
+            // Сохраняем имя пользователя
+            getSharedPreferences("gh_widget", Context.MODE_PRIVATE).edit()
+                .putString("user_default", user)
+                .putInt("page_default", 0)
+                .apply()
+
+            lifecycleScope.launch {
+                try {
+                    val profile = fetchGitHubData(user, this@MainActivity)
+                    showProfile(profile)
+                    updateAllWidgets()
+                    Toast.makeText(this@MainActivity, "Виджет обновлён", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        return when (item.itemId) {
-            R.id.action_settings -> true
-            else -> super.onOptionsItemSelected(item)
+    private fun showProfile(profile: GitHubProfile) {
+        val avatar = File(cacheDir, "avatar.png")
+        if (avatar.exists()) {
+            BitmapFactory.decodeFile(avatar.absolutePath)?.let {
+                ivProfile.setImageBitmap(it)
+            }
         }
+        tvName.text = profile.name.ifBlank { profile.login }
+        tvFollowers.text = "Подписчиков: ${profile.followers}"
+        profileBlock.visibility = View.VISIBLE
     }
 
-    override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_content_main)
-        return navController.navigateUp(appBarConfiguration)
-                || super.onSupportNavigateUp()
+    private fun updateAllWidgets() {
+        val manager = AppWidgetManager.getInstance(this)
+        val ids = manager.getAppWidgetIds(ComponentName(this, GitHubWidgetProvider::class.java))
+        ids.forEach { id ->
+            GitHubWidgetProvider.updateOne(this, manager, id)
+        }
     }
 }
