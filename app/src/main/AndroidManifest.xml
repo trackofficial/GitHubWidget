@@ -1,33 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.githubwidget">
 
-    <!-- Разрешение на доступ в интернет -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:label="GitHub Widget"
-        android:theme="@style/Theme.GitHubWidget"
         android:icon="@mipmap/ic_launcher"
-        android:supportsRtl="true">
+        android:theme="@style/Theme.GitHubWidget">
 
-        <!-- Главная активность -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="Git ID">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Провайдер виджета -->
         <receiver
             android:name=".GitHubWidgetProvider"
             android:exported="false">
             <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
 
             <meta-data
@@ -36,5 +34,4 @@
         </receiver>
 
     </application>
-
 </manifest>

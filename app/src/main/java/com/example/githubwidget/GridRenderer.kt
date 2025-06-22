@@ -1,63 +1,59 @@
 package com.example.githubwidget
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 
 object GridRenderer {
-    // Цвета уровней активности GitHub (в стиле оригинального дизайна)
-    private val levels = mapOf(
-        0 to Color.parseColor("#ebedf0"),
-        1 to Color.parseColor("#c6e48b"),
-        2 to Color.parseColor("#7bc96f"),
-        3 to Color.parseColor("#239a3b"),
-        4 to Color.parseColor("#196127")
+
+    private val levelColors = listOf(
+        Color.parseColor("#1AF8F9FF"),
+        Color.parseColor("#c6e48b"),
+        Color.parseColor("#7bc96f"),
+        Color.parseColor("#239a3b"),
+        Color.parseColor("#196127")
     )
 
-    /**
-     * Отрисовывает сетку активности GitHub, адаптированную под заданную ширину.
-     * @param cells список ячеек за каждый день
-     * @param maxWidthPx максимальная ширина bitmap (например, ширина экрана)
-     * @param minCellSize минимальный допустимый размер ячейки (px)
-     * @param cellPad отступ между ячейками (px)
-     */
-    fun renderAutoSize(
+    fun renderPage(
         cells: List<DayCell>,
-        maxWidthPx: Int = 520,
-        minCellSize: Int = 10,
-        cellPad: Int = 3
+        page: Int,
+        rows: Int,
+        colsPerPage: Int,
+        cellSize: Int,
+        cellPad: Int
     ): Bitmap {
-        val rows = 7
-        val cols = (cells.size + rows - 1) / rows
-
-        // Автоматический расчет размера ячеек
-        val cellSize = ((maxWidthPx + cellPad).toFloat() / cols - cellPad).toInt()
-            .coerceAtLeast(minCellSize)
-
-        val width = cols * (cellSize + cellPad) - cellPad
-        val height = rows * (cellSize + cellPad) - cellPad
-
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val radius = cellSize * 0.25f
 
-        for ((i, cell) in cells.withIndex()) {
-            val col = i / rows
-            val row = i % rows
-            paint.color = levels[cell.level] ?: Color.LTGRAY
+        val totalCols = (cells.size + rows - 1) / rows
+        val startCol = page * colsPerPage
+        val endCol = minOf(startCol + colsPerPage, totalCols)
+        val actualCols = endCol - startCol
 
-            val x = col * (cellSize + cellPad)
-            val y = row * (cellSize + cellPad)
-            canvas.drawRect(
-                x.toFloat(),
-                y.toFloat(),
-                (x + cellSize).toFloat(),
-                (y + cellSize).toFloat(),
-                paint
-            )
+        val width = actualCols * (cellSize + cellPad) - cellPad
+        val height = rows * (cellSize + cellPad) - cellPad
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+
+        for (col in 0 until actualCols) {
+            val globalCol = startCol + col
+            for (row in 0 until rows) {
+                val idx = row + globalCol * rows
+                if (idx >= cells.size) continue
+
+                val cell = cells[idx]
+                val x = col * (cellSize + cellPad)
+                val y = row * (cellSize + cellPad)
+
+                paint.color = levelColors.getOrElse(cell.level) { levelColors[0] }
+
+                canvas.drawRoundRect(
+                    RectF(x.toFloat(), y.toFloat(), (x + cellSize).toFloat(), (y + cellSize).toFloat()),
+                    radius,
+                    radius,
+                    paint
+                )
+            }
         }
 
-        return bitmap
+        return bmp
     }
 }

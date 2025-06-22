@@ -1,37 +1,39 @@
 package com.example.githubwidget
 
 import android.graphics.*
+import kotlin.math.min
 
 object WidgetAssets {
+
+    /**
+     * Создаёт заглушку аватара с серым кругом
+     */
     fun createAvatarPlaceholder(size: Int): Bitmap {
-        return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
-            Canvas(this).drawCircle(size/2f, size/2f, size/2f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.GRAY
-            })
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.LTGRAY
         }
+        val radius = size / 2f
+        canvas.drawCircle(radius, radius, radius, paint)
+        return bmp
     }
 
-    fun createFullGrid(rows: Int, cols: Int): Bitmap {
-        val cell = 6
-        val pad = 2
-        val w = cols * (cell + pad) - pad
-        val h = rows * (cell + pad) - pad
-        return Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply {
-            val c = Canvas(this)
-            val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.LTGRAY }
-            for (r in 0 until rows) {
-                for (col in 0 until cols) {
-                    val x = col * (cell + pad)
-                    val y = r * (cell + pad)
-                    c.drawRect(x.toFloat(), y.toFloat(), (x + cell).toFloat(), (y + cell).toFloat(), p)
-                }
-            }
-        }
-    }
+    /**
+     * Преобразует bitmap в круглый, используя BitmapShader
+     */
+    fun Bitmap.toCircle(): Bitmap {
+        val size = min(width, height)
+        val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-    fun sliceGrid(full: Bitmap, page: Int): Bitmap {
-        val half = full.width / 2
-        val x = if (page == 0) 0 else half
-        return Bitmap.createBitmap(full, x, 0, half, full.height)
+        val shader = BitmapShader(this, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        paint.shader = shader
+
+        val radius = size / 2f
+        canvas.drawCircle(radius, radius, radius, paint)
+
+        return output
     }
 }
