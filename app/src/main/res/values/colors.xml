@@ -55,7 +55,9 @@
 
     <!--____________________________________________-->
 
-    <color name="cell_none">#1AF8F9FF</color>
+    <color name="black_60">#99000000</color>
+    <color name="cell_none">#1FF8F9FF</color>
     <color name="white_text">#CCE4E6EE</color>
     <color name="dot_active_color">#E4E6EE</color>
+    <color name="background_color_for_layout">#12BAC1ED</color>
 </resources>

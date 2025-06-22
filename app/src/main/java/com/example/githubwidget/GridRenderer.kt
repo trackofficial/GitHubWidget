@@ -5,7 +5,7 @@ import android.graphics.*
 object GridRenderer {
 
     private val levelColors = listOf(
-        Color.parseColor("#1AF8F9FF"),
+        Color.parseColor("#1FF8F9FF"),
         Color.parseColor("#c6e48b"),
         Color.parseColor("#7bc96f"),
         Color.parseColor("#239a3b"),
