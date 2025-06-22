@@ -8,8 +8,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import android.widget.RemoteViews
 import com.example.githubwidget.WidgetAssets.toCircle
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.io.File
 
 class GitHubWidgetProvider : AppWidgetProvider() {
@@ -89,14 +93,22 @@ class GitHubWidgetProvider : AppWidgetProvider() {
 
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
         super.onUpdate(ctx, mgr, ids)
-        ids.forEach { updateOne(ctx, mgr, it) }
+
+        val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
+        val user = prefs.getString("user_default", null) ?: return
+        CoroutineScope(Dispatchers.Default).launch {
+            fetchGitHubData(user, ctx) // без forceRefresh
+            ids.forEach { updateOne(ctx, mgr, it) }
+        }
     }
 
     override fun onReceive(ctx: Context, intent: Intent) {
         super.onReceive(ctx, intent)
+
         val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
         var page = prefs.getInt("page_default", 0)
         val pageCount = prefs.getInt("page_count", 1)
+
         when (intent.action) {
             ACTION_NEXT -> page = (page + 1) % pageCount
             ACTION_PREV -> page = (page - 1 + pageCount) % pageCount
