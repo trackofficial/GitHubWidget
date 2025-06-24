@@ -6,10 +6,10 @@ object GridRenderer {
 
     private val levelColors = listOf(
         Color.parseColor("#1FF8F9FF"),
-        Color.parseColor("#8CF67A"),
-        Color.parseColor("#7bc96f"),
+        Color.parseColor("#196127"),
         Color.parseColor("#239a3b"),
-        Color.parseColor("#196127")
+        Color.parseColor("#7bc96f"),
+        Color.parseColor("#8CF67A")
     )
 
     fun renderPage(
