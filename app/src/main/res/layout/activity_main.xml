@@ -94,13 +94,22 @@
                     android:textColor="@color/white"/>
             </FrameLayout>
         </LinearLayout>
-
+        <TextView
+            android:layout_marginLeft="3dp"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/tildasans_bold"
+            android:textColor="@color/black"
+            android:id="@+id/tvTotalContrib"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Contributions"
+            android:textSize="19sp" />
         <LinearLayout
             android:paddingTop="18dp"
             android:paddingBottom="18dp"
             android:paddingLeft="16dp"
             android:paddingRight="16dp"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="4dp"
         android:background="@drawable/black_back"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

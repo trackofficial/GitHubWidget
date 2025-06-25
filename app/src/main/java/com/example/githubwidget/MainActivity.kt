@@ -5,9 +5,14 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.Rect
 import android.os.Bundle
-import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -20,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnLoad: ImageButton
     private lateinit var tvName: TextView
     private lateinit var tvLogin: TextView
+    private lateinit var tvTotalContrib: TextView
     private lateinit var ivAvatar: ImageView
     private lateinit var ivActivityGrid: ImageView
 
@@ -31,12 +37,12 @@ class MainActivity : AppCompatActivity() {
         btnLoad = findViewById(R.id.btnLoad)
         tvName = findViewById(R.id.tvName)
         tvLogin = findViewById(R.id.tvLogin)
+        tvTotalContrib = findViewById(R.id.tvTotalContrib)
         ivAvatar = findViewById(R.id.ivAvatar)
         ivActivityGrid = findViewById(R.id.ivActivityGrid)
 
-        val prefs = getSharedPreferences("gh_widget", MODE_PRIVATE)
+        val prefs   = getSharedPreferences("gh_widget", MODE_PRIVATE)
         val savedId = prefs.getString("user_default", "").orEmpty()
-
         if (savedId.isNotBlank()) {
             editUserId.setText(savedId)
             loadAndDisplayProfile(savedId)
@@ -59,51 +65,54 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val profile = fetchGitHubData(userId, this@MainActivity)
-                tvName.text = if (profile.name.isNotBlank()) profile.name else "No name"
-                tvLogin.text = "${profile.login}"
 
-                val avatarFile = File(filesDir, "avatar.png")
-                if (avatarFile.exists()) {
-                    val bmp = BitmapFactory.decodeFile(avatarFile.absolutePath)
-                    ivAvatar.setImageBitmap(bmp?.toCircularBitmap())
+                tvName.text = profile.name.ifBlank { "No name" }
+                tvLogin.text = "${profile.login}"
+                tvTotalContrib.text = "Contributions • ${profile.totalContributions}"
+                // Аватар
+                File(filesDir, "avatar.png").takeIf { it.exists() }?.let {
+                    BitmapFactory.decodeFile(it.absolutePath)?.let { bmp ->
+                        ivAvatar.setImageBitmap(bmp.toCircularBitmap())
+                    }
                 }
 
-                val bitmaps = (0 until 3).mapNotNull { page ->
-                    File(filesDir, "grid_page_$page.png")
-                        .takeIf { it.exists() }
+                // Сетка активности
+                val pages = (0 until 3).mapNotNull { page ->
+                    File(filesDir, "grid_page_$page.png").takeIf { it.exists() }
                         ?.let { BitmapFactory.decodeFile(it.absolutePath) }
                 }
-
-                if (bitmaps.isNotEmpty()) {
-                    val totalW = bitmaps.sumOf { it.width }
-                    val maxH = bitmaps.maxOf { it.height }
-                    val combined = Bitmap.createBitmap(totalW, maxH, bitmaps[0].config)
+                if (pages.isNotEmpty()) {
+                    val totalW = pages.sumOf { it.width }
+                    val maxH = pages.maxOf { it.height }
+                    val combined = Bitmap.createBitmap(totalW, maxH, pages[0].config)
                     val canvas = Canvas(combined)
-                    var xOffset = 0
-                    bitmaps.forEach {
-                        canvas.drawBitmap(it, xOffset.toFloat(), 0f, null)
-                        xOffset += it.width
+                    var x = 0
+                    pages.forEach {
+                        canvas.drawBitmap(it, x.toFloat(), 0f, null)
+                        x += it.width
                     }
                     ivActivityGrid.setImageBitmap(combined)
                 }
 
+                // Обновляем виджет
                 GitHubWidgetProvider.updateAll(this@MainActivity)
-
             } catch (e: Exception) {
-                Log.e("MainActivity", "Ошибка при загрузке профиля", e)
                 Toast.makeText(this@MainActivity, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
+
     private fun Bitmap.toCircularBitmap(): Bitmap {
         val size = minOf(width, height)
         val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val rect = Rect(0, 0, size, size)
+
         canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
         paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
         canvas.drawBitmap(this, null, rect, paint)
+
         return output
     }
 
@@ -111,16 +120,15 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this, GitHubWidgetProvider::class.java).apply {
             action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
         }
-        val pendingIntent = PendingIntent.getBroadcast(
+        val pending = PendingIntent.getBroadcast(
             this, 0, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        alarmManager.setRepeating(
+        (getSystemService(Context.ALARM_SERVICE) as AlarmManager).setRepeating(
             AlarmManager.RTC_WAKEUP,
-            System.currentTimeMillis() + 5000L,
-            30 * 60 * 1000L, // 30 минут
-            pendingIntent
+            System.currentTimeMillis() + 5_000L,
+            30 * 60 * 1000L,
+            pending
         )
     }
 }

@@ -31,18 +31,17 @@ class GitHubWidgetProvider : AppWidgetProvider() {
             Log.d("GitHubWidget", "updateOne widgetId=$widgetId")
             val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
             val user = prefs.getString("user_default", "") ?: ""
+            val totalContribs = prefs.getInt("total_contributions", 0)
             val page = prefs.getInt("page_default", 0)
             val pageCount = prefs.getInt("page_count", 1)
 
-            // Загружаем аватар из filesDir
-            val avatarFile = File(ctx.filesDir, "avatar.png")
-            val avatarBmp = avatarFile.takeIf { it.exists() }?.let {
+            // Аватар
+            val avatarBmp = File(ctx.filesDir, "avatar.png").takeIf { it.exists() }?.let {
                 BitmapFactory.decodeFile(it.absolutePath)?.toCircle()
             }
 
-            // Загружаем сетку из filesDir
-            val gridFile = File(ctx.filesDir, "grid_page_$page.png")
-            val gridBmp = gridFile.takeIf { it.exists() }?.let {
+            // Сетка
+            val gridBmp = File(ctx.filesDir, "grid_page_$page.png").takeIf { it.exists() }?.let {
                 BitmapFactory.decodeFile(it.absolutePath)
             }
 
@@ -57,8 +56,6 @@ class GitHubWidgetProvider : AppWidgetProvider() {
                         avatarBmp?.let { setImageViewBitmap(R.id.ivAvatar, it) }
                     }
                 )
-
-                // Grid + Dots
                 addView(R.id.container,
                     RemoteViews(ctx.packageName, R.layout.widget_grid).apply {
                         setImageViewResource(R.id.ivGrid, android.R.color.transparent)
@@ -80,26 +77,25 @@ class GitHubWidgetProvider : AppWidgetProvider() {
                 )
             }
 
-            Log.d("GitHubWidget", "Обновляем RemoteViews и пушим на виджет")
+            Log.d("GitHubWidget", "Pushing widget update")
             mgr.updateAppWidget(widgetId, views)
         }
 
-        private fun pendingIntent(ctx: Context, action: String): PendingIntent {
-            val intent = Intent(ctx, GitHubWidgetProvider::class.java).apply { this.action = action }
-            return PendingIntent.getBroadcast(
+        private fun pendingIntent(ctx: Context, action: String): PendingIntent =
+            PendingIntent.getBroadcast(
                 ctx,
                 action.hashCode(),
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                Intent(ctx, GitHubWidgetProvider::class.java).apply { this.action = action },
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
-        }
     }
+
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
         super.onUpdate(ctx, mgr, ids)
-        val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
-        val user = prefs.getString("user_default", null) ?: return
+        val user = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
+            .getString("user_default", null) ?: return
 
-        Log.d("GitHubWidget", "onUpdate — обновляем данные профиля и картинку сетки")
+        Log.d("GitHubWidget", "onUpdate — fetch profile & updateAll")
         CoroutineScope(Dispatchers.Default).launch {
             fetchGitHubData(user, ctx)
             ids.forEach { updateOne(ctx, mgr, it) }
@@ -108,11 +104,12 @@ class GitHubWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(ctx: Context, intent: Intent) {
         super.onReceive(ctx, intent)
-        val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
-        var page = prefs.getInt("page_default", 0)
+        Log.d("GitHubWidget", "onReceive action=${intent.action}")
+
+        val prefs     = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
+        var page       = prefs.getInt("page_default", 0)
         val pageCount = prefs.getInt("page_count", 1)
 
-        Log.d("GitHubWidget", "onReceive action=${intent.action}")
         when (intent.action) {
             ACTION_NEXT -> page = (page + 1) % pageCount
             ACTION_PREV -> page = (page - 1 + pageCount) % pageCount
