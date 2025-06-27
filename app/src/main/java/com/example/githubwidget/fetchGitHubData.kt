@@ -12,14 +12,12 @@ import java.net.URL
 
 suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
     withContext(Dispatchers.IO) {
-        // 1. Загружаем профиль
         val profileJson = JSONObject(URL("https://api.github.com/users/$id").readText())
-        val login  = profileJson.getString("login")
+        val login = profileJson.getString("login")
         val name = profileJson.optString("name", "")
         val avatarUrl = profileJson.optString("avatar_url", "")
         val followers = profileJson.optInt("followers", 0)
 
-        // 2. Скачиваем и сохраняем аватар
         runCatching {
             if (avatarUrl.isNotBlank()) {
                 Log.d("GitHubWidget", "Скачиваю аватар: $avatarUrl")
@@ -36,7 +34,6 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
             Log.e("GitHubWidget", "Ошибка при загрузке аватара", it)
         }
 
-        // 3. Загружаем активность и собираем DayCell
         val gridJson = JSONObject(URL("https://github-contributions-api.deno.dev/$id.json").readText())
         val weeks    = gridJson.getJSONArray("contributions")
         val raw = mutableListOf<DayCell>()
@@ -52,15 +49,13 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
             }
         }
 
-        // 4. Считаем общее число contributions
+
         val totalContributions = raw.sumOf { it.count }
-        // Сохраняем в prefs, чтобы виджет мог прочитать
         context.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
             .edit()
             .putInt("total_contributions", totalContributions)
             .apply()
 
-        // 5. Вычисляем уровни и подготавливаем padding
         val max = raw.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
         val cells = raw.map {
             val lvl = when {
@@ -77,8 +72,6 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
         val actualCols= (cells.size + rows - 1) / rows
         val padCols = maxCols - actualCols
         val padded = List(padCols * rows) { DayCell("", 0, 0) } + cells
-
-        // 6. Рендерим страницы сетки
         val cellSize = 49
         val cellPad = 6
         val columnSet= listOf(18, 18, 18)
@@ -97,6 +90,5 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
             apply()
         }
 
-        // 8. Возвращаем профиль вместе с totalContributions
         GitHubProfile(login, name, avatarUrl, followers, totalContributions)
     }

@@ -65,7 +65,6 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val profile = fetchGitHubData(userId, this@MainActivity)
-
                 tvName.text = profile.name.ifBlank { "No name" }
                 tvLogin.text = "${profile.login}"
                 tvTotalContrib.text = "Contributions • ${profile.totalContributions}"
@@ -76,7 +75,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                // Сетка активности
                 val pages = (0 until 3).mapNotNull { page ->
                     File(filesDir, "grid_page_$page.png").takeIf { it.exists() }
                         ?.let { BitmapFactory.decodeFile(it.absolutePath) }
@@ -94,7 +92,6 @@ class MainActivity : AppCompatActivity() {
                     ivActivityGrid.setImageBitmap(combined)
                 }
 
-                // Обновляем виджет
                 GitHubWidgetProvider.updateAll(this@MainActivity)
             } catch (e: Exception) {
                 Toast.makeText(this@MainActivity, "Ошибка: ${e.message}", Toast.LENGTH_LONG).show()

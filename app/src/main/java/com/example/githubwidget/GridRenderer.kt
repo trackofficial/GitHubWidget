@@ -22,12 +22,10 @@ object GridRenderer {
     ): Bitmap {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val radius = cellSize * 0.25f
-
         val totalCols = (cells.size + rows - 1) / rows
         val startCol = page * colsPerPage
         val endCol = minOf(startCol + colsPerPage, totalCols)
         val actualCols = endCol - startCol
-
         val width = actualCols * (cellSize + cellPad) - cellPad
         val height = rows * (cellSize + cellPad) - cellPad
         val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
@@ -38,13 +36,10 @@ object GridRenderer {
             for (row in 0 until rows) {
                 val idx = row + globalCol * rows
                 if (idx >= cells.size) continue
-
                 val cell = cells[idx]
                 val x = col * (cellSize + cellPad)
                 val y = row * (cellSize + cellPad)
-
                 paint.color = levelColors.getOrElse(cell.level) { levelColors[0] }
-
                 canvas.drawRoundRect(
                     RectF(x.toFloat(), y.toFloat(), (x + cellSize).toFloat(), (y + cellSize).toFloat()),
                     radius,

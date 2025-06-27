@@ -31,16 +31,13 @@ class GitHubWidgetProvider : AppWidgetProvider() {
             Log.d("GitHubWidget", "updateOne widgetId=$widgetId")
             val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
             val user = prefs.getString("user_default", "") ?: ""
-            val totalContribs = prefs.getInt("total_contributions", 0)
             val page = prefs.getInt("page_default", 0)
             val pageCount = prefs.getInt("page_count", 1)
 
-            // Аватар
             val avatarBmp = File(ctx.filesDir, "avatar.png").takeIf { it.exists() }?.let {
                 BitmapFactory.decodeFile(it.absolutePath)?.toCircle()
             }
 
-            // Сетка
             val gridBmp = File(ctx.filesDir, "grid_page_$page.png").takeIf { it.exists() }?.let {
                 BitmapFactory.decodeFile(it.absolutePath)
             }
@@ -48,7 +45,6 @@ class GitHubWidgetProvider : AppWidgetProvider() {
             val views = RemoteViews(ctx.packageName, R.layout.widget_container).apply {
                 removeAllViews(R.id.container)
 
-                // Header
                 addView(R.id.container,
                     RemoteViews(ctx.packageName, R.layout.widget_header).apply {
                         setTextViewText(R.id.tvUsername, user)

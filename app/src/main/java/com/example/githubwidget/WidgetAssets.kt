@@ -4,10 +4,6 @@ import android.graphics.*
 import kotlin.math.min
 
 object WidgetAssets {
-
-    /**
-     * Создаёт заглушку аватара с серым кругом
-     */
     fun createAvatarPlaceholder(size: Int): Bitmap {
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -19,9 +15,6 @@ object WidgetAssets {
         return bmp
     }
 
-    /**
-     * Преобразует bitmap в круглый, используя BitmapShader
-     */
     fun Bitmap.toCircle(): Bitmap {
         val size = min(width, height)
         val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
