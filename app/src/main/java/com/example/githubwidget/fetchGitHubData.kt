@@ -8,11 +8,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 
 suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
     withContext(Dispatchers.IO) {
-        val profileJson = JSONObject(URL("https://api.github.com/users/$id").readText())
+
+        fun fetchJson(url: String): JSONObject {
+            val connection = URL(url).openConnection() as HttpsURLConnection
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Accept", "application/vnd.github+json")
+
+            val code = connection.responseCode
+            Log.d("GitHubWidget", "Запрос: $url → Код: $code")
+
+            if (code != HttpURLConnection.HTTP_OK) {
+                val errorBody = connection.errorStream?.bufferedReader()?.use { it.readText() }
+                Log.e("GitHubWidget", "Ошибка API: $code\n$errorBody")
+                throw RuntimeException("GitHub API error $code for $url")
+            }
+
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            return JSONObject(response)
+        }
+
+        val profileJson = fetchJson("https://api.github.com/users/$id")
         val login = profileJson.getString("login")
         val name = profileJson.optString("name", "")
         val avatarUrl = profileJson.optString("avatar_url", "")
@@ -23,10 +44,9 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
                 Log.d("GitHubWidget", "Скачиваю аватар: $avatarUrl")
                 URL(avatarUrl).openStream().use { stream ->
                     BitmapFactory.decodeStream(stream)?.let { bmp ->
-                        File(context.filesDir, "avatar.png")
-                            .outputStream().use { out ->
-                                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
-                            }
+                        File(context.filesDir, "avatar.png").outputStream().use { out ->
+                            bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        }
                     }
                 }
             }
@@ -34,21 +54,20 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
             Log.e("GitHubWidget", "Ошибка при загрузке аватара", it)
         }
 
-        val gridJson = JSONObject(URL("https://github-contributions-api.deno.dev/$id.json").readText())
-        val weeks    = gridJson.getJSONArray("contributions")
+        val gridJson = fetchJson("https://github-contributions-api.deno.dev/$id.json")
+        val weeks = gridJson.getJSONArray("contributions")
         val raw = mutableListOf<DayCell>()
         for (i in 0 until weeks.length()) {
             val week = weeks.getJSONArray(i)
             for (j in 0 until week.length()) {
                 val cell = week.getJSONObject(j)
                 raw += DayCell(
-                    date  = cell.getString("date"),
+                    date = cell.getString("date"),
                     count = cell.getInt("contributionCount"),
                     level = 0
                 )
             }
         }
-
 
         val totalContributions = raw.sumOf { it.count }
         context.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
@@ -67,21 +86,22 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
             }
             it.copy(level = lvl)
         }
-        val rows= 7
+
+        val rows = 7
         val maxCols = 53
-        val actualCols= (cells.size + rows - 1) / rows
+        val actualCols = (cells.size + rows - 1) / rows
         val padCols = maxCols - actualCols
         val padded = List(padCols * rows) { DayCell("", 0, 0) } + cells
         val cellSize = 49
         val cellPad = 6
-        val columnSet= listOf(18, 18, 18)
+        val columnSet = listOf(18, 18, 18)
+
         columnSet.forEachIndexed { page, colsPerPage ->
             val bmp = GridRenderer.renderPage(padded, page, rows, colsPerPage, cellSize, cellPad)
             File(context.filesDir, "grid_page_$page.png")
                 .outputStream().use { out -> bmp.compress(Bitmap.CompressFormat.PNG, 100, out) }
         }
 
-        // 7. Сохраняем остальные параметры
         context.getSharedPreferences("gh_widget", Context.MODE_PRIVATE).edit().apply {
             putString("user_default", id)
             putInt("page_count", columnSet.size)
