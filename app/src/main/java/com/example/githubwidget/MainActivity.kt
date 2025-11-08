@@ -5,21 +5,15 @@ import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.PorterDuff
-import android.graphics.PorterDuffXfermode
-import android.graphics.Rect
+import android.graphics.*
 import android.os.Bundle
 import android.widget.*
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import java.io.File
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
     private lateinit var editUserId: EditText
     private lateinit var btnLoad: ImageButton
@@ -41,7 +35,7 @@ class MainActivity : AppCompatActivity() {
         ivAvatar = findViewById(R.id.ivAvatar)
         ivActivityGrid = findViewById(R.id.ivActivityGrid)
 
-        val prefs   = getSharedPreferences("gh_widget", MODE_PRIVATE)
+        val prefs = getSharedPreferences("gh_widget", MODE_PRIVATE)
         val savedId = prefs.getString("user_default", "").orEmpty()
         if (savedId.isNotBlank()) {
             editUserId.setText(savedId)
@@ -62,13 +56,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadAndDisplayProfile(userId: String) {
+        val token = BuildConfig.GITHUB_TOKEN // ✅ Авторизация через токен
         lifecycleScope.launch {
             try {
-                val profile = fetchGitHubData(userId, this@MainActivity)
+                val profile = fetchGitHubData(userId, this@MainActivity, token)
                 tvName.text = profile.name.ifBlank { "No name" }
-                tvLogin.text = "${profile.login}"
+                tvLogin.text = profile.login
                 tvTotalContrib.text = "Contributions • ${profile.totalContributions}"
-                // Аватар
+
                 File(filesDir, "avatar.png").takeIf { it.exists() }?.let {
                     BitmapFactory.decodeFile(it.absolutePath)?.let { bmp ->
                         ivAvatar.setImageBitmap(bmp.toCircularBitmap())
@@ -79,6 +74,7 @@ class MainActivity : AppCompatActivity() {
                     File(filesDir, "grid_page_$page.png").takeIf { it.exists() }
                         ?.let { BitmapFactory.decodeFile(it.absolutePath) }
                 }
+
                 if (pages.isNotEmpty()) {
                     val totalW = pages.sumOf { it.width }
                     val maxH = pages.maxOf { it.height }

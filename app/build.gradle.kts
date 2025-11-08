@@ -15,10 +15,15 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // ✅ Добавляем токен из local.properties
+        val githubToken = project.findProperty("GITHUB_TOKEN") as? String ?: ""
+        buildConfigField("String", "GITHUB_TOKEN", "\"$githubToken\"")
     }
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true // ✅ Включаем генерацию BuildConfig
     }
 
     compileOptions {
@@ -32,13 +37,11 @@ android {
 }
 
 dependencies {
-    // ✅ Совместимая версия с compileSdk 34
     implementation("androidx.core:core-ktx:1.12.0")
-
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.10.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation ("androidx.work:work-runtime-ktx:2.9.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
     implementation("org.jsoup:jsoup:1.15.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")

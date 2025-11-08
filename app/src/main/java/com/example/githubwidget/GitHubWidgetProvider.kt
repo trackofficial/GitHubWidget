@@ -91,9 +91,11 @@ class GitHubWidgetProvider : AppWidgetProvider() {
         val user = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
             .getString("user_default", null) ?: return
 
+        val token = BuildConfig.GITHUB_TOKEN // ✅ Добавляем токен
+
         Log.d("GitHubWidget", "onUpdate — fetch profile & updateAll")
         CoroutineScope(Dispatchers.Default).launch {
-            fetchGitHubData(user, ctx)
+            fetchGitHubData(user, ctx, token) // ✅ Передаём токен
             ids.forEach { updateOne(ctx, mgr, it) }
         }
     }
@@ -102,8 +104,8 @@ class GitHubWidgetProvider : AppWidgetProvider() {
         super.onReceive(ctx, intent)
         Log.d("GitHubWidget", "onReceive action=${intent.action}")
 
-        val prefs     = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
-        var page       = prefs.getInt("page_default", 0)
+        val prefs = ctx.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
+        var page = prefs.getInt("page_default", 0)
         val pageCount = prefs.getInt("page_count", 1)
 
         when (intent.action) {

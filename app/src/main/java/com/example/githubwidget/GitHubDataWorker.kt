@@ -12,14 +12,19 @@ class GitHubDataWorker(appContext: Context, params: WorkerParameters)
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val prefs = applicationContext.getSharedPreferences("gh_widget", Context.MODE_PRIVATE)
         val user = prefs.getString("user_default", null) ?: return@withContext Result.failure()
+
+        // ✅ Получаем токен из BuildConfig
+        val token = BuildConfig.GITHUB_TOKEN
+
         return@withContext try {
-            fetchGitHubData(user, applicationContext)
+            fetchGitHubData(user, applicationContext, token) // ✅ Передаём токен
             GitHubWidgetProvider.updateAll(applicationContext)
             Result.success()
         } catch (e: Exception) {
             Result.retry()
         }
     }
+
     companion object {
         fun schedule(ctx: Context) {
             val request = PeriodicWorkRequestBuilder<GitHubDataWorker>(1, TimeUnit.HOURS)

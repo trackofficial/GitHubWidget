@@ -12,13 +12,19 @@ import java.net.HttpURLConnection
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
-suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
+suspend fun fetchGitHubData(id: String, context: Context, token: String): GitHubProfile =
     withContext(Dispatchers.IO) {
 
         fun fetchJson(url: String): JSONObject {
             val connection = URL(url).openConnection() as HttpsURLConnection
             connection.requestMethod = "GET"
             connection.setRequestProperty("Accept", "application/vnd.github+json")
+            connection.setRequestProperty("User-Agent", "GitHubWidget")
+
+            // ✅ Авторизация через токен
+            if (token.isNotBlank()) {
+                connection.setRequestProperty("Authorization", "Bearer $token")
+            }
 
             val code = connection.responseCode
             Log.d("GitHubWidget", "Запрос: $url → Код: $code")
@@ -41,7 +47,6 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
 
         runCatching {
             if (avatarUrl.isNotBlank()) {
-                Log.d("GitHubWidget", "Скачиваю аватар: $avatarUrl")
                 URL(avatarUrl).openStream().use { stream ->
                     BitmapFactory.decodeStream(stream)?.let { bmp ->
                         File(context.filesDir, "avatar.png").outputStream().use { out ->
@@ -50,8 +55,6 @@ suspend fun fetchGitHubData(id: String, context: Context): GitHubProfile =
                     }
                 }
             }
-        }.onFailure {
-            Log.e("GitHubWidget", "Ошибка при загрузке аватара", it)
         }
 
         val gridJson = fetchJson("https://github-contributions-api.deno.dev/$id.json")
