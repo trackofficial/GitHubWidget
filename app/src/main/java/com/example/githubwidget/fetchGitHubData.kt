@@ -10,6 +10,8 @@ import org.json.JSONObject
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.DayOfWeek
+import java.time.LocalDate
 import javax.net.ssl.HttpsURLConnection
 
 suspend fun fetchGitHubData(id: String, context: Context, token: String): GitHubProfile =
@@ -21,7 +23,6 @@ suspend fun fetchGitHubData(id: String, context: Context, token: String): GitHub
             connection.setRequestProperty("Accept", "application/vnd.github+json")
             connection.setRequestProperty("User-Agent", "GitHubWidget")
 
-            // ✅ Авторизация через токен
             if (token.isNotBlank()) {
                 connection.setRequestProperty("Authorization", "Bearer $token")
             }
@@ -39,6 +40,7 @@ suspend fun fetchGitHubData(id: String, context: Context, token: String): GitHub
             return JSONObject(response)
         }
 
+        // 1. Получаем данные профиля
         val profileJson = fetchJson("https://api.github.com/users/$id")
         val login = profileJson.getString("login")
         val name = profileJson.optString("name", "")
@@ -57,19 +59,18 @@ suspend fun fetchGitHubData(id: String, context: Context, token: String): GitHub
             }
         }
 
-        val gridJson = fetchJson("https://github-contributions-api.deno.dev/$id.json")
-        val weeks = gridJson.getJSONArray("contributions")
+        // 2. ✅ ИСПРАВЛЕНИЕ: запрашиваем "последний год" как на GitHub (?y=last)
+        val gridJson = fetchJson("https://github-contributions-api.jogruber.de/v4/$id?y=last")
+        val contributions = gridJson.getJSONArray("contributions")
         val raw = mutableListOf<DayCell>()
-        for (i in 0 until weeks.length()) {
-            val week = weeks.getJSONArray(i)
-            for (j in 0 until week.length()) {
-                val cell = week.getJSONObject(j)
-                raw += DayCell(
-                    date = cell.getString("date"),
-                    count = cell.getInt("contributionCount"),
-                    level = 0
-                )
-            }
+
+        for (i in 0 until contributions.length()) {
+            val cell = contributions.getJSONObject(i)
+            raw += DayCell(
+                date = cell.getString("date"),
+                count = cell.getInt("count"),
+                level = cell.optInt("level", 0)
+            )
         }
 
         val totalContributions = raw.sumOf { it.count }
@@ -78,23 +79,42 @@ suspend fun fetchGitHubData(id: String, context: Context, token: String): GitHub
             .putInt("total_contributions", totalContributions)
             .apply()
 
-        val max = raw.maxOfOrNull { it.count }?.coerceAtLeast(1) ?: 1
-        val cells = raw.map {
-            val lvl = when {
-                it.count == 0 -> 0
-                it.count < max * 0.25 -> 1
-                it.count < max * 0.5 -> 2
-                it.count < max * 0.75 -> 3
-                else -> 4
-            }
-            it.copy(level = lvl)
-        }
-
+        // 3. ✅ ИСПРАВЛЕНИЕ: правильно выравниваем сетку по дням недели
         val rows = 7
         val maxCols = 53
-        val actualCols = (cells.size + rows - 1) / rows
-        val padCols = maxCols - actualCols
-        val padded = List(padCols * rows) { DayCell("", 0, 0) } + cells
+        val maxCells = maxCols * rows // 371
+
+        // Сортируем по дате на всякий случай
+        val sorted = raw.sortedBy { LocalDate.parse(it.date) }
+
+        // Определяем сегодняшнюю дату и начало периода (53 недели назад, выровненное по воскресенью)
+        val today = LocalDate.now()
+        val startDate = today.minusWeeks(53).let { date ->
+            // GitHub начинает сетку с воскресенья (Sunday)
+            val daysSinceSunday = date.dayOfWeek.value % 7
+            date.minusDays(daysSinceSunday.toLong())
+        }
+
+        // Фильтруем только нужный диапазон (на случай, если API вернёт лишнее)
+        val filtered = sorted.filter {
+            val date = LocalDate.parse(it.date)
+            !date.isBefore(startDate) && !date.isAfter(today)
+        }
+
+        // Вычисляем, сколько пустых ячеек нужно в начале для выравнивания
+        // Если startDate — воскресенье, padding = 0; если понедельник — 1, и т.д.
+        val firstDayPadding = startDate.dayOfWeek.value % 7
+
+        // Создаём полную сетку: пустые ячейки + данные + пустые ячейки в конце (если нужно)
+        val fullGrid = List(firstDayPadding) { DayCell("", 0, 0) } + filtered
+
+        // Обрезаем или дополняем до ровно 371 ячейки
+        val padded = if (fullGrid.size >= maxCells) {
+            fullGrid.take(maxCells)
+        } else {
+            fullGrid + List(maxCells - fullGrid.size) { DayCell("", 0, 0) }
+        }
+
         val cellSize = 49
         val cellPad = 6
         val columnSet = listOf(18, 18, 18)
